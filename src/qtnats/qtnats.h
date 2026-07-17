@@ -463,12 +463,15 @@ struct QTNATS_EXPORT Message {
     [[nodiscard]] bool isIncoming() const { return static_cast<bool>(m_natsMsg); }
 
     // JetStream acknowledgments
-    void ack() const;
+    void ack(const std::optional<JsOptions>& opts = std::nullopt) const;
 
-    void nack(std::optional<int64_t> delay) const; // ms
-    void inProgress() const;
+    void nack(
+        const std::optional<int64_t>& delay = std::nullopt,
+        const std::optional<JsOptions>& opts = std::nullopt
+    ) const; // ms
+    void inProgress(const std::optional<JsOptions>& opts = std::nullopt) const;
 
-    void terminate() const;
+    void terminate(const std::optional<JsOptions>& opts = std::nullopt) const;
 
 private:
     // Message is copyable, but the underlying natsMsg is not. Thus, we use a shared pointer, and only delete the
@@ -699,38 +702,65 @@ public:
 
     void asyncPublish(const Message& msg, const JsPublishOptions& opts) const;
 
-    void waitForPublishCompleted(std::optional<NatsTimeout> timeout = std::nullopt) const;
+    void waitForPublishCompleted(const std::optional<JsPublishOptions>& opts = std::nullopt) const;
 
-    Subscription* subscribe(const QString& subject, const QString& stream, const QString& consumer);
+    Subscription* subscribe(
+        const QString& subject,
+        const QString& stream,
+        const QString& consumer,
+        const std::optional<JsOptions>& opts = std::nullopt
+    );
 
-    PullSubscription* pullSubscribe(const QString& subject, const QString& stream, const QString& consumer);
+    PullSubscription* pullSubscribe(
+        const QString& subject,
+        const QString& stream,
+        const QString& consumer,
+        const std::optional<JsOptions>& opts = std::nullopt
+    );
 
     // General stream functions
 
-    JsStreamInfo addStream(const JsStreamConfig& config) const;
+    JsStreamInfo addStream(const JsStreamConfig& config, const std::optional<JsOptions>& opts = std::nullopt) const;
 
-    JsStreamInfo updateStream(const JsStreamConfig& config) const;
+    JsStreamInfo updateStream(const JsStreamConfig& config, const std::optional<JsOptions>& opts = std::nullopt) const;
 
-    void purgeStream(const QString& stream) const;
+    void purgeStream(const QString& stream, const std::optional<JsOptions>& opts = std::nullopt) const;
 
-    void deleteStream(const QString& stream) const;
+    void deleteStream(const QString& stream, const std::optional<JsOptions>& opts = std::nullopt) const;
 
-    JsStreamInfo getStreamInfo(const QString& stream) const;
+    JsStreamInfo getStreamInfo(const QString& stream, const std::optional<JsOptions>& opts = std::nullopt) const;
 
     // General consumer functions
 
-    JsConsumerInfo addConsumer(const QString& stream, const JsConsumerConfig& config) const;
+    JsConsumerInfo addConsumer(
+        const QString& stream,
+        const JsConsumerConfig& config,
+        const std::optional<JsOptions>& opts = std::nullopt
+    ) const;
 
-    JsConsumerInfo updateConsumer(const QString& stream, const JsConsumerConfig& config) const;
+    JsConsumerInfo updateConsumer(
+        const QString& stream,
+        const JsConsumerConfig& config,
+        const std::optional<JsOptions>& opts = std::nullopt
+    ) const;
 
-    JsConsumerInfo getConsumerInfo(const QString& stream, const QString& consumer) const;
+    JsConsumerInfo getConsumerInfo(
+        const QString& stream,
+        const QString& consumer,
+        const std::optional<JsOptions>& opts = std::nullopt
+    ) const;
 
-    void deleteConsumer(const QString& stream, const QString& consumer) const;
+    void deleteConsumer(
+        const QString& stream,
+        const QString& consumer,
+        const std::optional<JsOptions>& opts = std::nullopt
+    ) const;
 
     JsConsumerPauseResponse pauseConsumer(
         const QString& stream,
         const QString& consumer,
-        NatsTimePoint pauseUntil
+        NatsTimePoint pauseUntil,
+        const std::optional<JsOptions>& opts = std::nullopt
     ) const;
 
     // Functions for creating durable objects that are related to the JetStream.

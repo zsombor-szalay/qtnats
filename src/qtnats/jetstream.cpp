@@ -44,100 +44,138 @@ JetStream* Client::jetStream(const JsOptions& options) {
     return js.release();
 }
 
-JsStreamInfo JetStream::addStream(const JsStreamConfig& config) const {
+JsStreamInfo JetStream::addStream(const JsStreamConfig& config, const std::optional<JsOptions>& opts) const {
     return convertAndHandle(config, [&](jsStreamConfig& jsConfig) {
+        return convertOptionalAndHandle(opts, [&](jsOptions* jsOpts) {
+            jsStreamInfo* si;
+            jsErrCode jsErr = {};
+            const natsStatus s = js_AddStream(&si, m_jsCtx, &jsConfig, jsOpts, &jsErr);
+            checkJsError(s, jsErr);
+            return fromC(JsStreamInfoPtr(si));
+        });
+    });
+}
+
+JsStreamInfo JetStream::updateStream(const JsStreamConfig& config, const std::optional<JsOptions>& opts) const {
+    return convertAndHandle(config, [&](jsStreamConfig& jsConfig) {
+        return convertOptionalAndHandle(opts, [&](jsOptions* jsOpts) {
+            jsStreamInfo* si;
+            jsErrCode jsErr = {};
+            const natsStatus s = js_UpdateStream(&si, m_jsCtx, &jsConfig, jsOpts, &jsErr);
+            checkJsError(s, jsErr);
+            return fromC(JsStreamInfoPtr(si));
+        });
+    });
+}
+
+void JetStream::purgeStream(const QString& stream, const std::optional<JsOptions>& opts) const {
+    convertOptionalAndHandle(opts, [&](jsOptions* jsOpts) {
+        jsErrCode jsErr = {};
+        natsStatus s = js_PurgeStream(m_jsCtx, stream.toUtf8().constData(), jsOpts, &jsErr);
+        checkJsError(s, jsErr);
+    });
+}
+
+void JetStream::deleteStream(const QString& stream, const std::optional<JsOptions>& opts) const {
+    return convertOptionalAndHandle(opts, [&](jsOptions* jsOpts) {
+        jsErrCode jsErr = {};
+        const natsStatus s = js_DeleteStream(m_jsCtx, stream.toUtf8().constData(), jsOpts, &jsErr);
+        checkJsError(s, jsErr);
+    });
+}
+
+JsStreamInfo JetStream::getStreamInfo(const QString& stream, const std::optional<JsOptions>& opts) const {
+    return convertOptionalAndHandle(opts, [&](jsOptions* jsOpts) {
         jsStreamInfo* si;
         jsErrCode jsErr = {};
-        const natsStatus s = js_AddStream(&si, m_jsCtx, &jsConfig, nullptr, &jsErr);
+        const natsStatus s = js_GetStreamInfo(&si, m_jsCtx, stream.toUtf8().constData(), jsOpts, &jsErr);
         checkJsError(s, jsErr);
         return fromC(JsStreamInfoPtr(si));
     });
 }
 
-JsStreamInfo JetStream::updateStream(const JsStreamConfig& config) const {
-    return convertAndHandle(config, [&](jsStreamConfig& jsConfig) {
-        jsStreamInfo* si;
-        jsErrCode jsErr = {};
-        const natsStatus s = js_UpdateStream(&si, m_jsCtx, &jsConfig, nullptr, &jsErr);
-        checkJsError(s, jsErr);
-        return fromC(JsStreamInfoPtr(si));
+JsConsumerInfo JetStream::addConsumer(
+    const QString& stream,
+    const JsConsumerConfig& config,
+    const std::optional<JsOptions>& opts
+) const {
+    return convertAndHandle(config, [&](jsConsumerConfig& jsConfig) {
+        return convertOptionalAndHandle(opts, [&](jsOptions* jsOpts) {
+            jsConsumerInfo* ci;
+            jsErrCode jsErr = {};
+            const natsStatus s = js_AddConsumer(&ci, m_jsCtx, stream.toUtf8().constData(), &jsConfig, jsOpts, &jsErr);
+            checkJsError(s, jsErr);
+            return fromC(JsConsumerInfoPtr(ci));
+        });
     });
 }
 
-void JetStream::purgeStream(const QString& stream) const {
-    jsErrCode jsErr = {};
-    const natsStatus s = js_PurgeStream(m_jsCtx, stream.toUtf8().constData(), nullptr, &jsErr);
-    checkJsError(s, jsErr);
-}
-
-void JetStream::deleteStream(const QString& stream) const {
-    jsErrCode jsErr = {};
-    const natsStatus s = js_DeleteStream(m_jsCtx, stream.toUtf8().constData(), nullptr, &jsErr);
-    checkJsError(s, jsErr);
-}
-
-JsStreamInfo JetStream::getStreamInfo(const QString& stream) const {
-    jsStreamInfo* si;
-    jsErrCode jsErr = {};
-    const natsStatus s = js_GetStreamInfo(&si, m_jsCtx, stream.toUtf8().constData(), nullptr, &jsErr);
-    checkJsError(s, jsErr);
-    return fromC(JsStreamInfoPtr(si));
-}
-
-JsConsumerInfo JetStream::addConsumer(const QString& stream, const JsConsumerConfig& config) const {
+JsConsumerInfo JetStream::updateConsumer(
+    const QString& stream,
+    const JsConsumerConfig& config,
+    const std::optional<JsOptions>& opts
+) const {
     return convertAndHandle(config, [&](jsConsumerConfig& jsConfig) {
+        return convertOptionalAndHandle(opts, [&](jsOptions* jsOpts) {
+            jsConsumerInfo* ci;
+            jsErrCode jsErr = {};
+            const natsStatus s = js_UpdateConsumer(&ci, m_jsCtx, stream.toUtf8().constData(), &jsConfig, jsOpts, &jsErr);
+            checkJsError(s, jsErr);
+            return fromC(JsConsumerInfoPtr(ci));
+        });
+    });
+}
+
+JsConsumerInfo JetStream::getConsumerInfo(
+    const QString& stream,
+    const QString& consumer,
+    const std::optional<JsOptions>& opts
+) const {
+    return convertOptionalAndHandle(opts, [&](jsOptions* jsOpts) {
         jsConsumerInfo* ci;
         jsErrCode jsErr = {};
-        const natsStatus s = js_AddConsumer(&ci, m_jsCtx, stream.toUtf8().constData(), &jsConfig, nullptr, &jsErr);
+        const natsStatus s = js_GetConsumerInfo(
+            &ci, m_jsCtx, stream.toUtf8().constData(), consumer.toUtf8().constData(), jsOpts, &jsErr
+        );
         checkJsError(s, jsErr);
         return fromC(JsConsumerInfoPtr(ci));
     });
 }
 
-JsConsumerInfo JetStream::updateConsumer(const QString& stream, const JsConsumerConfig& config) const {
-    return convertAndHandle(config, [&](jsConsumerConfig& jsConfig) {
-        jsConsumerInfo* ci;
+void JetStream::deleteConsumer(
+    const QString& stream,
+    const QString& consumer,
+    const std::optional<JsOptions>& opts
+) const {
+    return convertOptionalAndHandle(opts, [&](jsOptions* jsOpts) {
         jsErrCode jsErr = {};
-        const natsStatus s = js_UpdateConsumer(&ci, m_jsCtx, stream.toUtf8().constData(), &jsConfig, nullptr, &jsErr);
+        const natsStatus s =
+            js_DeleteConsumer(m_jsCtx, stream.toUtf8().constData(), consumer.toUtf8().constData(), jsOpts, &jsErr);
         checkJsError(s, jsErr);
-        return fromC(JsConsumerInfoPtr(ci));
     });
-}
-
-JsConsumerInfo JetStream::getConsumerInfo(const QString& stream, const QString& consumer) const {
-    jsConsumerInfo* ci;
-    jsErrCode jsErr = {};
-    const natsStatus s =
-        js_GetConsumerInfo(&ci, m_jsCtx, stream.toUtf8().constData(), consumer.toUtf8().constData(), nullptr, &jsErr);
-    checkJsError(s, jsErr);
-    return fromC(JsConsumerInfoPtr(ci));
-}
-
-void JetStream::deleteConsumer(const QString& stream, const QString& consumer) const {
-    jsErrCode jsErr = {};
-    const natsStatus s =
-        js_DeleteConsumer(m_jsCtx, stream.toUtf8().constData(), consumer.toUtf8().constData(), nullptr, &jsErr);
-    checkJsError(s, jsErr);
 }
 
 JsConsumerPauseResponse JetStream::pauseConsumer(
     const QString& stream,
     const QString& consumer,
-    const NatsTimePoint pauseUntil
+    const NatsTimePoint pauseUntil,
+    const std::optional<JsOptions>& opts
 ) const {
-    jsConsumerPauseResponse* resp;
-    jsErrCode jsErr = {};
-    const natsStatus s = js_PauseConsumer(
-        &resp,
-        m_jsCtx,
-        stream.toUtf8().constData(),
-        consumer.toUtf8().constData(),
-        pauseUntil.time_since_epoch().count(),
-        nullptr,
-        &jsErr
-    );
-    checkJsError(s, jsErr);
-    return fromC(JsConsumerPauseResponsePtr(resp));
+    return convertOptionalAndHandle(opts, [&](jsOptions* jsOpts) {
+        jsConsumerPauseResponse* resp;
+        jsErrCode jsErr = {};
+        const natsStatus s = js_PauseConsumer(
+            &resp,
+            m_jsCtx,
+            stream.toUtf8().constData(),
+            consumer.toUtf8().constData(),
+            pauseUntil.time_since_epoch().count(),
+            jsOpts,
+            &jsErr
+        );
+        checkJsError(s, jsErr);
+        return fromC(JsConsumerPauseResponsePtr(resp));
+    });
 }
 
 ObjectStore* JetStream::createObjectStore(const ObjStoreConfig& config) {
@@ -171,25 +209,37 @@ void JetStream::deleteObjectStore(const QString& bucket) const {
     checkError(js_DeleteObjectStore(m_jsCtx, bucket.toUtf8().constData()));
 }
 
-void Message::ack() const {
-    jsErrCode jsErr = {};
-    const natsStatus s = natsMsg_AckSync(m_natsMsg.get(), nullptr, &jsErr);
-    checkJsError(s, jsErr);
+void Message::ack(const std::optional<JsOptions>& opts) const {
+    return convertOptionalAndHandle(opts, [&](jsOptions* jsOpts) {
+        jsErrCode jsErr = {};
+        const natsStatus s = natsMsg_AckSync(m_natsMsg.get(), jsOpts, &jsErr);
+        checkJsError(s, jsErr);
+    });
 }
 
-void Message::nack(std::optional<int64_t> delay) const {
-    natsStatus s;
-    if (delay.has_value()) {
-        s = natsMsg_NakWithDelay(m_natsMsg.get(), delay.value(), nullptr);
-    } else {
-        s = natsMsg_Nak(m_natsMsg.get(), nullptr);
-    }
-    checkError(s);
+void Message::nack(const std::optional<int64_t>& delay, const std::optional<JsOptions>& opts) const {
+    return convertOptionalAndHandle(opts, [&](jsOptions* jsOpts) {
+        natsStatus s;
+        if (delay.has_value()) {
+            s = natsMsg_NakWithDelay(m_natsMsg.get(), delay.value(), jsOpts);
+        } else {
+            s = natsMsg_Nak(m_natsMsg.get(), jsOpts);
+        }
+        checkError(s);
+    });
 }
 
-void Message::inProgress() const { checkError(natsMsg_InProgress(m_natsMsg.get(), nullptr)); }
+void Message::inProgress(const std::optional<JsOptions>& opts) const {
+    return convertOptionalAndHandle(opts, [&](jsOptions* jsOpts) {
+        checkError(natsMsg_InProgress(m_natsMsg.get(), jsOpts));
+    });
+}
 
-void Message::terminate() const { checkError(natsMsg_Term(m_natsMsg.get(), nullptr)); }
+void Message::terminate(const std::optional<JsOptions>& opts) const {
+    return convertOptionalAndHandle(opts, [&](jsOptions* jsOpts) {
+        checkError(natsMsg_Term(m_natsMsg.get(), jsOpts));
+    });
+}
 
 PullSubscription::~PullSubscription() noexcept { natsSubscription_Destroy(m_sub); }
 
@@ -219,59 +269,72 @@ void JetStream::asyncPublish(const Message& msg, const JsPublishOptions& opts) c
     convertAndHandle(opts, [&](jsPubOptions& jsOpts) { doAsyncPublish(msg, &jsOpts); });
 }
 
-void JetStream::waitForPublishCompleted(const std::optional<NatsTimeout> timeout) const {
-    natsStatus s = NATS_OK;
-
-    if (timeout.has_value()) {
-        convertAndHandle(JsPublishOptions{.timeout = timeout}, [&](jsPubOptions& jsOpts) {
-            s = js_PublishAsyncComplete(m_jsCtx, &jsOpts);
-        });
-    } else {
-        s = js_PublishAsyncComplete(m_jsCtx, nullptr);
-    }
-
-    if (s == NATS_TIMEOUT) {
-        // optionally we can delete the messages, but they might be ACK'ed later
-        // natsMsgList list;
-        // js_PublishAsyncGetPendingList(&list, m_jsCtx);
-        // natsMsgList_Destroy(&list);
-    }
-    checkError(s);
+void JetStream::waitForPublishCompleted(const std::optional<JsPublishOptions>& opts) const {
+    return convertOptionalAndHandle(opts, [&](jsPubOptions* jsOpts) {
+        const natsStatus s = js_PublishAsyncComplete(m_jsCtx, jsOpts);
+        if (s == NATS_TIMEOUT) {
+            // optionally we can delete the messages, but they might be ACK'ed later
+            // natsMsgList list;
+            // js_PublishAsyncGetPendingList(&list, m_jsCtx);
+            // natsMsgList_Destroy(&list);
+        }
+        checkError(s);
+    });
 }
 
-Subscription* JetStream::subscribe(const QString& subject, const QString& stream, const QString& consumer) {
+Subscription* JetStream::subscribe(
+    const QString& subject,
+    const QString& stream,
+    const QString& consumer,
+    const std::optional<JsOptions>& opts
+) {
     // manualAck=true: avoid _autoAckCB in cnats internals, because it takes over ownership of delivered messages
     // If something throws, it will be cleaned up by the unique_ptr's destructor instead of being leaked.
     // We can't use make_unique because we're relying on the friend declaration.
     auto sub = std::unique_ptr<Subscription>(new Subscription(nullptr));
     jsErrCode jsErr = {};
     convertAndHandle(JsSubOptions{stream, consumer}, /*manualAck=*/true, [&](jsSubOptions& subOpts) {
-        const natsStatus s = js_Subscribe(
-            &sub->m_sub,
-            m_jsCtx,
-            subject.toUtf8().constData(),
-            &subscriptionCallback,
-            sub.get(),
-            nullptr,
-            &subOpts,
-            &jsErr
-        );
-        checkJsError(s, jsErr);
+        convertOptionalAndHandle(opts, [&](jsOptions* jsOpts) {
+            const natsStatus s = js_Subscribe(
+                &sub->m_sub,
+                m_jsCtx,
+                subject.toUtf8().constData(),
+                &subscriptionCallback,
+                sub.get(),
+                jsOpts,
+                &subOpts,
+                &jsErr
+            );
+            checkJsError(s, jsErr);
+        });
     });
     sub->setParent(this);
     return sub.release();
 }
 
-PullSubscription* JetStream::pullSubscribe(const QString& subject, const QString& stream, const QString& consumer) {
+PullSubscription* JetStream::pullSubscribe(
+    const QString& subject,
+    const QString& stream,
+    const QString& consumer,
+    const std::optional<JsOptions>& opts
+) {
     // If something throws, it will be cleaned up by the unique_ptr's destructor instead of being leaked.
     // We can't use make_unique because we're relying on the friend declaration.
     auto sub = std::unique_ptr<PullSubscription>(new PullSubscription(nullptr));
     jsErrCode jsErr = {};
     convertAndHandle(JsSubOptions{stream, consumer}, /*manualAck=*/false, [&](jsSubOptions& subOpts) {
-        const natsStatus s = js_PullSubscribe(
-            &sub->m_sub, m_jsCtx, subject.toUtf8().constData(), consumer.toUtf8().constData(), nullptr, &subOpts, &jsErr
-        );
-        checkJsError(s, jsErr);
+        convertOptionalAndHandle(opts, [&](jsOptions* jsOpts) {
+            const natsStatus s = js_PullSubscribe(
+                &sub->m_sub,
+                m_jsCtx,
+                subject.toUtf8().constData(),
+                consumer.toUtf8().constData(),
+                jsOpts,
+                &subOpts,
+                &jsErr
+            );
+            checkJsError(s, jsErr);
+        });
     });
     sub->setParent(this);
     return sub.release();

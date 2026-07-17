@@ -223,6 +223,17 @@ auto convertAndHandleAll(const QList<T>& items, F&& handler) {
     return recurse(recurse, 0);
 }
 
+// Converts an optional C++ value into a C pointer for the duration of the callback:
+// the address of the converted object if present, or nullptr if empty.
+template <typename T, typename F>
+auto convertOptionalAndHandle(const std::optional<T>& opt, F&& handler) {
+    if (!opt.has_value())
+        return handler(nullptr);
+    return convertAndHandle(*opt, [&](auto& converted) {
+        return handler(&converted);
+    });
+}
+
 template <typename F>
 auto convertAndHandle(const Message& msg, const char* reply, F&& handler) -> std::invoke_result_t<F, NatsMsgPtr&> {
     StringArena a;
